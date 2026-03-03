@@ -3,13 +3,33 @@ Streamlit Web App for CalcModule v2
 Advanced Calculator with Image OCR + Symbolic Calculus
 """
 
-import streamlit as st
-import sympy as sp
-import numpy as np
-import re
-from PIL import Image
-import sys
-import os
+# ── Auto-install dependencies ─────────────────────────────────────────────────
+import subprocess, sys, os
+
+_REQUIRED = [
+    "streamlit",
+    "sympy",
+    "numpy",
+    "Pillow",
+    "opencv-python",
+    "pytesseract",
+]
+
+def _install_packages():
+    """Install missing packages silently at first launch."""
+    for pkg in _REQUIRED:
+        try:
+            subprocess.check_call(
+                [sys.executable, "-m", "pip", "install", pkg, "--quiet"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        except subprocess.CalledProcessError:
+            pass  # skip silently; import errors will surface naturally
+
+# Run once per interpreter session (not every Streamlit rerun)
+_install_packages()
+
 
 # ── Page Config ──────────────────────────────────────────────────────────────
 st.set_page_config(
