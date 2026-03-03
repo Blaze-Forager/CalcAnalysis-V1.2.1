@@ -1,6 +1,6 @@
-streamlit
-sympy
-numpy
-Pillow
-opencv-python
+streamlit as st
+sympy as sp
+numpy as np
+Pillow as Image
+opencv-python as cv2
 pytesseract
