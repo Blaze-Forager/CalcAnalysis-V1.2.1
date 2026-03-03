@@ -8,6 +8,7 @@ import subprocess, sys, os
 import sympy as sp
 import numpy as np
 from PIL import Image
+import streamlit as st
 import re
 try:
     import cv2
@@ -508,3 +509,4 @@ st.markdown(
     "</p>",
     unsafe_allow_html=True
 )
+
