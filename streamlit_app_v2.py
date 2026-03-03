@@ -15,6 +15,14 @@ _REQUIRED = [
     "pytesseract",
 ]
 
+import sympy as sp
+import cv2
+import pytesseract
+import numpy as np
+from PIL import Image
+import time
+import re
+
 def _install_packages():
     """Install missing packages silently at first launch."""
     for pkg in _REQUIRED:
