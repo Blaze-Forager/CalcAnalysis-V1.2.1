@@ -1,0 +1,7 @@
+streamlit
+sympy
+numpy
+re
+PIL
+sys
+os
