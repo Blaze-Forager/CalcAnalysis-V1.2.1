@@ -8,7 +8,6 @@ import subprocess, sys, os
 import sympy as sp
 import numpy as np
 from PIL import Image
-import streamlit as st
 import re
 try:
     import cv2
@@ -39,6 +38,7 @@ def _install_packages():
 # Run once per interpreter session (not every Streamlit rerun)
 _install_packages()
 
+import streamlit as st
 
 # ── Page Config ──────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -347,20 +347,23 @@ with tab_ocr:
         if st.button("🔍 Run OCR", key="run_ocr"):
             with st.spinner("Running OCR…"):
                 raw_text = ocr_image(pil_img)
-                cleaned = clean_math_expression(raw_text)
+                # Only clean if it's a real expression, not an error message
+                is_error = raw_text.startswith("[")
+                cleaned = "" if is_error else clean_math_expression(raw_text)
 
             st.markdown("**Raw OCR output:**")
             st.markdown(f'<div class="ocr-box">{raw_text if raw_text else "(empty)"}</div>', unsafe_allow_html=True)
-            st.markdown("**Cleaned expression:**")
-            st.markdown(f'<div class="ocr-box">{cleaned if cleaned else "(empty)"}</div>', unsafe_allow_html=True)
 
-            if cleaned and not cleaned.startswith("["):
-                edited = st.text_input("✏️ Edit before loading", value=cleaned, key="ocr_edit")
-                if st.button("⬅️ Load into Calculator", key="load_ocr"):
-                    st.session_state["expr_str"] = edited
-                    st.success(f"Expression loaded: `{edited}` — please re-open another tab to compute.")
+            if is_error:
+                st.warning("⚠️ Tesseract is not installed or not found. Install it using the instructions below, then restart the app.")
             else:
-                st.info("Make sure **Tesseract OCR** is installed and in your PATH, or type the expression manually in the sidebar.")
+                st.markdown("**Cleaned expression:**")
+                st.markdown(f'<div class="ocr-box">{cleaned if cleaned else "(empty)"}</div>', unsafe_allow_html=True)
+                if cleaned:
+                    edited = st.text_input("✏️ Edit before loading", value=cleaned, key="ocr_edit")
+                    if st.button("⬅️ Load into Calculator", key="load_ocr"):
+                        st.session_state["expr_str"] = edited
+                        st.success(f"Expression loaded: `{edited}` — switch to another tab to compute.")
 
     st.markdown("---")
     st.markdown("""
@@ -505,8 +508,7 @@ with tab_eval:
 st.markdown("---")
 st.markdown(
     "<p style='text-align:center; color:#4a5568; font-size:0.8rem;'>"
-    "CalcModule v2 · Powered by SymPy &amp; Streamlit · 🐥🐥🐥"
+    "CalcModule v2 · Powered by SymPy, Streamlit, OpenCV, Pytesseract, &amp; Three hard working psyducks."
     "</p>",
     unsafe_allow_html=True
 )
-
