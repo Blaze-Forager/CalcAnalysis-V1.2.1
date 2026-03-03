@@ -21,6 +21,7 @@ _REQUIRED = [
     "Pillow",
     "opencv-python-headless",  # headless = no libGL/OpenGL dependency
     "pytesseract",
+    "easyocr",  # pure-Python OCR fallback — no Tesseract binary needed
 ]
 
 def _install_packages():
@@ -209,20 +210,10 @@ def clean_math_expression(text: str) -> str:
     text = re.sub(r'(\d)\(', r'\1*(', text)
     return text
 
-def ocr_image(pil_image: Image.Image) -> str:
-    """Run pytesseract OCR; graceful fallback if not installed."""
+def _preprocess_for_ocr(pil_image: Image.Image):
+    """Return a contrast-enhanced grayscale image for better OCR accuracy."""
     try:
-        import pytesseract
-        import cv2
-        import numpy as np
-
-        # Try common Windows Tesseract path
-        if sys.platform.startswith("win"):
-            import os
-            tess_path = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-            if os.path.exists(tess_path):
-                pytesseract.pytesseract.tesseract_cmd = tess_path
-
+        import cv2, numpy as np
         img_np = np.array(pil_image.convert("RGB"))
         gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
         blurred = cv2.GaussianBlur(gray, (5, 5), 0)
@@ -231,13 +222,41 @@ def ocr_image(pil_image: Image.Image) -> str:
             cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
             cv2.THRESH_BINARY, 11, 2
         )
-        pil_proc = Image.fromarray(thresh)
-        raw = pytesseract.image_to_string(pil_proc, config='--oem 3 --psm 6')
-        return raw.strip()
-    except ImportError:
-        return "[pytesseract / opencv not installed — please type expression manually]"
-    except Exception as e:
-        return f"[OCR Error: {e}]"
+        return Image.fromarray(thresh)
+    except Exception:
+        return pil_image  # fall back to original if cv2 unavailable
+
+def ocr_image(pil_image: Image.Image) -> tuple[str, str]:
+    """Try pytesseract first; fall back to easyocr. Returns (text, engine_used)."""
+
+    processed = _preprocess_for_ocr(pil_image)
+
+    # ── Stage 1: Tesseract ────────────────────────────────────────────────
+    try:
+        import pytesseract
+        # Auto-detect common Windows install path
+        if sys.platform.startswith("win"):
+            tess_path = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+            if os.path.exists(tess_path):
+                pytesseract.pytesseract.tesseract_cmd = tess_path
+        raw = pytesseract.image_to_string(processed, config='--oem 3 --psm 6')
+        return raw.strip(), "Tesseract"
+    except Exception as tess_err:
+        tess_msg = str(tess_err)
+        # If Tesseract binary missing, try easyocr
+        if "tesseract is not installed" in tess_msg.lower() or "not in your path" in tess_msg.lower():
+            pass  # fall through to easyocr
+        else:
+            return f"[Tesseract error: {tess_msg}]", "error"
+
+    # ── Stage 2: EasyOCR (no binary required) ────────────────────────────
+    try:
+        import easyocr
+        reader = easyocr.Reader(['en'], gpu=False, verbose=False)
+        results = reader.readtext(np.array(pil_image.convert("RGB")), detail=0)
+        return " ".join(results).strip(), "EasyOCR"
+    except Exception as easy_err:
+        return f"[OCR failed: {easy_err}]", "error"
 
 # ── Session State ─────────────────────────────────────────────────────────────
 if "expr_str" not in st.session_state:
@@ -345,25 +364,25 @@ with tab_ocr:
             st.image(pil_img, caption="Uploaded image", use_container_width=True)
 
         if st.button("🔍 Run OCR", key="run_ocr"):
-            with st.spinner("Running OCR…"):
-                raw_text = ocr_image(pil_img)
-                # Only clean if it's a real expression, not an error message
+            with st.spinner("Running OCR… (first run may take a moment to load models)"):
+                raw_text, engine = ocr_image(pil_img)
                 is_error = raw_text.startswith("[")
                 cleaned = "" if is_error else clean_math_expression(raw_text)
 
-            st.markdown("**Raw OCR output:**")
-            st.markdown(f'<div class="ocr-box">{raw_text if raw_text else "(empty)"}</div>', unsafe_allow_html=True)
-
             if is_error:
-                st.warning("⚠️ Tesseract is not installed or not found. Install it using the instructions below, then restart the app.")
+                st.error(f"❌ {raw_text}")
             else:
+                st.caption(f"✅ OCR engine used: **{engine}**")
+                st.markdown("**Raw OCR output:**")
+                st.markdown(f'<div class="ocr-box">{raw_text if raw_text else "(empty)"}</div>', unsafe_allow_html=True)
                 st.markdown("**Cleaned expression:**")
-                st.markdown(f'<div class="ocr-box">{cleaned if cleaned else "(empty)"}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="ocr-box">{cleaned if cleaned else "(empty — try a clearer image)"}</div>', unsafe_allow_html=True)
                 if cleaned:
                     edited = st.text_input("✏️ Edit before loading", value=cleaned, key="ocr_edit")
                     if st.button("⬅️ Load into Calculator", key="load_ocr"):
                         st.session_state["expr_str"] = edited
                         st.success(f"Expression loaded: `{edited}` — switch to another tab to compute.")
+
 
     st.markdown("---")
     st.markdown("""
