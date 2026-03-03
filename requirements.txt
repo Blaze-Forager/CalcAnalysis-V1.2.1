@@ -1,7 +1,6 @@
 streamlit
 sympy
 numpy
-re
-PIL
-sys
-os
+Pillow
+opencv-python
+pytesseract
