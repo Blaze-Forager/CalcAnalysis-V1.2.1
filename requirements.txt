@@ -1,6 +1,6 @@
 streamlit
-sympy 
+sympy
 numpy
-Pillow 
-opencv-python
+Pillow
+opencv-python-headless
 pytesseract
