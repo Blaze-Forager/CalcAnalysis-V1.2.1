@@ -5,6 +5,13 @@ Advanced Calculator with Image OCR + Symbolic Calculus
 
 # ── Auto-install dependencies ─────────────────────────────────────────────────
 import subprocess, sys, os
+import sympy as sp
+import cv2
+import pytesseract
+import numpy as np
+from PIL import Image
+import time
+import re
 
 _REQUIRED = [
     "streamlit",
@@ -14,14 +21,6 @@ _REQUIRED = [
     "opencv-python",
     "pytesseract",
 ]
-
-import sympy as sp
-import cv2
-import pytesseract
-import numpy as np
-from PIL import Image
-import time
-import re
 
 def _install_packages():
     """Install missing packages silently at first launch."""
