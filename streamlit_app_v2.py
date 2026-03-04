@@ -159,7 +159,7 @@ section[data-testid="stSidebar"] {
 st.markdown("""
 <div class="hero">
     <h1>∫ CalcModule v2</h1>
-    <p>Advanced Symbolic Calculator · Image OCR · Engineered by a team of 3 hardworking psyducks 🐥</p>
+    <p>Advanced Symbolic Calculator · Image OCR · Engineered by a team of 3 hardworking psyducks</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -297,7 +297,7 @@ try:
     st.session_state["var_str"] = var_input
 
     with st.sidebar:
-        st.success("✅ Parsed successfully")
+        st.success("Expression converted successfully")
         st.latex(sp.latex(sym_expr))
 
 except sp.SympifyError:
@@ -312,23 +312,23 @@ st.sidebar.markdown("**Format Guide**")
 st.sidebar.code("sin, cos, tan, exp, log, sqrt\npi, E\n** for power\n* for multiply", language="")
 # ── Tabs ──────────────────────────────────────────────────────────────────────
 tab_ocr, tab_diff, tab_integ, tab_lim, tab_taylor, tab_eval = st.tabs([
-    "📷 Image OCR",
-    "∂ Differentiation",
-    "∫ Integration",
-    "lim Limit",
-    "~ Taylor Series",
-    "= Evaluation",
+    "Image OCR",
+    "Differentiation",
+    "Integration",
+    "Limit",
+    "Taylor Series",
+    "Evaluation",
 ])
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TAB 0 · IMAGE OCR
 # ─────────────────────────────────────────────────────────────────────────────
 with tab_ocr:
-    st.markdown('<div class="section-title">📷 Extract Expression from Image</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">Extract Expression from Image</div>', unsafe_allow_html=True)
     st.markdown("Capture with your camera or upload a photo of a handwritten or printed mathematical expression.")
 
     # ── Input mode selector ───────────────────────────────────────────────────
-    ocr_sub_upload, ocr_sub_camera = st.tabs(["📁 Upload Image", "📸 Use Camera"])
+    ocr_sub_upload, ocr_sub_camera = st.tabs(["Upload Image", "Use Camera"])
 
     pil_img = None  # will be set by whichever input is active
 
@@ -354,7 +354,7 @@ with tab_ocr:
 
     # ── Shared OCR processing ─────────────────────────────────────────────────
     def _show_ocr_results(img: Image.Image, btn_key: str, edit_key: str, load_key: str):
-        if st.button("🔍 Run OCR", key=btn_key):
+        if st.button("Run OCR", key=btn_key):
             with st.spinner("Running OCR… (first run may take a moment to load models)"):
                 raw_text, engine = ocr_image(img)
                 is_error = raw_text.startswith("[")
@@ -363,16 +363,16 @@ with tab_ocr:
             if is_error:
                 st.error(f"❌ {raw_text}")
             else:
-                st.caption(f"✅ OCR engine used: **{engine}**")
+                st.caption(f"OCR engine used: **{engine}**")
                 st.markdown("**Raw OCR output:**")
                 st.markdown(f'<div class="ocr-box">{raw_text if raw_text else "(empty)"}</div>', unsafe_allow_html=True)
                 st.markdown("**Cleaned expression:**")
                 st.markdown(f'<div class="ocr-box">{cleaned if cleaned else "(empty — try a clearer image)"}</div>', unsafe_allow_html=True)
                 if cleaned:
-                    edited = st.text_input("✏️ Edit before loading", value=cleaned, key=edit_key)
-                    if st.button("⬅️ Load into Calculator", key=load_key):
+                    edited = st.text_input("Edit before loading", value=cleaned, key=edit_key)
+                    if st.button("Load into Calculator", key=load_key):
                         st.session_state["expr_str"] = edited
-                        st.success(f"Expression loaded: `{edited}` — switch to another tab to compute.")
+                        st.rerun()
 
     if pil_img is not None:
         src = "cam" if (camera_shot is not None and pil_img is not None and
@@ -516,7 +516,7 @@ with tab_eval:
 st.markdown("---")
 st.markdown(
     "<p style='text-align:center; color:#4a5568; font-size:0.8rem;'>"
-    "CalcModule v2 · Powered by SymPy, Streamlit, OpenCV, EasyOCR, &amp; Three hard working psyducks."
+    "CalcModule v2 · Powered by SymPy, Streamlit, OpenCV, Pytesseract, &amp; Three hard working psyducks."
     "</p>",
     unsafe_allow_html=True
 )
