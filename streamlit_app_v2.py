@@ -160,7 +160,7 @@ section[data-testid="stSidebar"] {
 st.markdown("""
 <div class="hero">
     <h1>∫ CalcModule v2</h1>
-    <p>Advanced Symbolic Calculator · Image OCR · Engineered by a team of 3 hardworking psyducks 🐥</p>
+    <p>Advanced Symbolic Calculator · Image OCR · Engineered by a team of 3 hardworking psyducks</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -319,7 +319,7 @@ try:
     st.session_state["var_str"] = var_input
 
     with st.sidebar:
-        st.success("✅ Parsed successfully")
+        st.success("Expression converted successfully")
         st.latex(sp.latex(sym_expr))
 
 except sp.SympifyError:
@@ -385,14 +385,14 @@ with tab_ocr:
             if is_error:
                 st.error(f"❌ {raw_text}")
             else:
-                st.caption(f"✅ OCR engine used: **{engine}**")
+                st.caption(f" OCR engine used: **{engine}**")
                 st.markdown("**Raw OCR output:**")
                 st.markdown(f'<div class="ocr-box">{raw_text if raw_text else "(empty)"}</div>', unsafe_allow_html=True)
                 st.markdown("**Cleaned expression:**")
                 st.markdown(f'<div class="ocr-box">{cleaned if cleaned else "(empty — try a clearer image)"}</div>', unsafe_allow_html=True)
                 if cleaned:
-                    edited = st.text_input("✏️ Edit before loading", value=cleaned, key=edit_key)
-                    if st.button("⬅️ Load into Calculator", key=load_key):
+                    edited = st.text_input("Edit before loading", value=cleaned, key=edit_key)
+                    if st.button("Load into Calculator", key=load_key):
                         st.session_state["expr_str"] = edited
                         st.success(f"Expression loaded: `{edited}` — switch to another tab to compute.")
 
@@ -548,4 +548,5 @@ st.markdown(
     "</p>",
     unsafe_allow_html=True
 )
+
 
