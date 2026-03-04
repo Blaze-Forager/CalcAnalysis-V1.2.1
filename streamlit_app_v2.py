@@ -347,25 +347,38 @@ tab_ocr, tab_diff, tab_integ, tab_lim, tab_taylor, tab_eval = st.tabs([
 # ─────────────────────────────────────────────────────────────────────────────
 with tab_ocr:
     st.markdown('<div class="section-title">📷 Extract Expression from Image</div>', unsafe_allow_html=True)
-    st.markdown("Upload a photo of a handwritten or printed mathematical expression. The app will read it with OCR and load it into the calculator.")
+    st.markdown("Capture with your camera or upload a photo of a handwritten or printed mathematical expression.")
 
-    col_up, col_prev = st.columns([1, 1])
+    # ── Input mode selector ───────────────────────────────────────────────────
+    ocr_sub_upload, ocr_sub_camera = st.tabs(["📁 Upload Image", "📸 Use Camera"])
 
-    with col_up:
-        uploaded = st.file_uploader(
-            "Upload image (JPG / PNG / BMP)",
-            type=["jpg", "jpeg", "png", "bmp", "tiff"],
-            label_visibility="collapsed"
-        )
+    pil_img = None  # will be set by whichever input is active
 
-    if uploaded is not None:
-        pil_img = Image.open(uploaded)
-        with col_prev:
-            st.image(pil_img, caption="Uploaded image", use_container_width=True)
+    with ocr_sub_upload:
+        col_up, col_prev = st.columns([1, 1])
+        with col_up:
+            uploaded = st.file_uploader(
+                "Upload image (JPG / PNG / BMP)",
+                type=["jpg", "jpeg", "png", "bmp", "tiff"],
+                label_visibility="collapsed",
+                key="ocr_upload",
+            )
+        if uploaded is not None:
+            pil_img = Image.open(uploaded)
+            with col_prev:
+                st.image(pil_img, caption="Uploaded image", use_container_width=True)
 
-        if st.button("🔍 Run OCR", key="run_ocr"):
+    with ocr_sub_camera:
+        st.markdown("Point your camera at the expression and press **Take photo**.")
+        camera_shot = st.camera_input("Take a photo", key="ocr_camera", label_visibility="collapsed")
+        if camera_shot is not None:
+            pil_img = Image.open(camera_shot)
+
+    # ── Shared OCR processing ─────────────────────────────────────────────────
+    def _show_ocr_results(img: Image.Image, btn_key: str, edit_key: str, load_key: str):
+        if st.button("🔍 Run OCR", key=btn_key):
             with st.spinner("Running OCR… (first run may take a moment to load models)"):
-                raw_text, engine = ocr_image(pil_img)
+                raw_text, engine = ocr_image(img)
                 is_error = raw_text.startswith("[")
                 cleaned = "" if is_error else clean_math_expression(raw_text)
 
@@ -378,11 +391,15 @@ with tab_ocr:
                 st.markdown("**Cleaned expression:**")
                 st.markdown(f'<div class="ocr-box">{cleaned if cleaned else "(empty — try a clearer image)"}</div>', unsafe_allow_html=True)
                 if cleaned:
-                    edited = st.text_input("✏️ Edit before loading", value=cleaned, key="ocr_edit")
-                    if st.button("⬅️ Load into Calculator", key="load_ocr"):
+                    edited = st.text_input("✏️ Edit before loading", value=cleaned, key=edit_key)
+                    if st.button("⬅️ Load into Calculator", key=load_key):
                         st.session_state["expr_str"] = edited
                         st.success(f"Expression loaded: `{edited}` — switch to another tab to compute.")
 
+    if pil_img is not None:
+        src = "cam" if (camera_shot is not None and pil_img is not None and
+                        "ocr_camera" in st.session_state and st.session_state.get("ocr_camera") is not None) else "up"
+        _show_ocr_results(pil_img, f"run_ocr_{src}", f"ocr_edit_{src}", f"load_ocr_{src}")
 
     st.markdown("---")
     st.markdown("""
