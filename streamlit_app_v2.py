@@ -358,6 +358,8 @@ tab_ocr, tab_diff, tab_integ, tab_lim, tab_taylor, tab_eval = st.tabs([
 with tab_ocr:
     st.markdown('<div class="section-title">Extract Expression from Image</div>', unsafe_allow_html=True)
     st.markdown("Capture with your camera or upload a photo of a handwritten or printed mathematical expression.")
+    st.markdown("Note: For smartphone users, please refrain from using the camera function under the 'Upload Image' tab.")
+
     # ── Input mode selector ───────────────────────────────────────────────────
     ocr_sub_upload, ocr_sub_camera = st.tabs(["Upload Image", "Use Camera"])
 
@@ -564,3 +566,4 @@ st.markdown(
     "</p>",
     unsafe_allow_html=True
 )
+
