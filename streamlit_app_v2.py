@@ -4,12 +4,11 @@ Advanced Calculator with Image OCR + Symbolic Calculus
 """
 
 # ── Auto-install dependencies ─────────────────────────────────────────────────
-import subprocess, sys, os, base64, io
+import subprocess, sys, os
 import sympy as sp
 import numpy as np
 from PIL import Image
 import re
-import streamlit.components.v1 as st_components
 try:
     import cv2
 except ImportError:
@@ -20,7 +19,7 @@ _REQUIRED = [
     "sympy",
     "numpy",
     "Pillow",
-    "opencv-python-headless",  # headless = no libGL/OpenGL dependency
+    "opencv-python-headless",
     "easyocr",
 ]
 
@@ -34,98 +33,10 @@ def _install_packages():
                 stderr=subprocess.DEVNULL,
             )
         except subprocess.CalledProcessError:
-            pass  # skip silently; import errors will surface naturally
+            pass
 
 # Run once per interpreter session (not every Streamlit rerun)
 _install_packages()
-
-# ── Custom back-camera component (self-contained, no external file needed) ─────
-import tempfile, pathlib
-
-_BACK_CAMERA_HTML = """<!DOCTYPE html>
-<html lang="en"><head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: sans-serif; background: transparent; padding: 8px; }
-  #video { width: 100%; border-radius: 10px; background: #0d1b2a; display: block; }
-  #capture-btn {
-    width: 100%; margin-top: 10px; padding: 10px 0;
-    background: #1b263b; color: white; border: none;
-    border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer;
-    transition: opacity 0.2s ease;
-  }
-  #capture-btn:hover { opacity: 0.85; }
-  #status { margin-top: 6px; font-size: 0.78rem; color: #a0aec0; text-align: center; }
-  #preview { display: none; width: 100%; border-radius: 10px; margin-top: 8px; }
-  #retake-btn {
-    display: none; width: 100%; margin-top: 8px; padding: 8px 0;
-    background: rgba(255,255,255,0.08); color: #e0e0e0;
-    border: 1px solid rgba(255,255,255,0.15); border-radius: 8px;
-    font-size: 0.9rem; cursor: pointer;
-  }
-  canvas { display: none; }
-</style></head><body>
-<video id="video" autoplay playsinline muted></video>
-<canvas id="canvas"></canvas>
-<img id="preview" alt="Captured photo">
-<button id="capture-btn">📸 Capture Photo</button>
-<button id="retake-btn">🔄 Retake</button>
-<div id="status">Starting back camera…</div>
-<script>
-  function send(type, value) { window.parent.postMessage({ type, value }, "*"); }
-  function setHeight() { send("streamlit:setFrameHeight", document.body.scrollHeight + 20); }
-  send("streamlit:componentReady", { apiVersion: 1 });
-  window.addEventListener("message", e => { if (e.data.type === "streamlit:render") setHeight(); });
-
-  const video = document.getElementById("video");
-  const canvas = document.getElementById("canvas");
-  const captureBtn = document.getElementById("capture-btn");
-  const retakeBtn = document.getElementById("retake-btn");
-  const preview = document.getElementById("preview");
-  const status = document.getElementById("status");
-
-  navigator.mediaDevices.getUserMedia({
-    video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } }
-  }).then(stream => {
-    video.srcObject = stream;
-    video.onloadedmetadata = () => { status.textContent = "Back camera ready — aim and press Capture."; setHeight(); };
-  }).catch(err => { status.textContent = "⚠️ Camera error: " + err.message; setHeight(); });
-
-  captureBtn.addEventListener("click", () => {
-    canvas.width = video.videoWidth || 640; canvas.height = video.videoHeight || 480;
-    canvas.getContext("2d").drawImage(video, 0, 0);
-    const dataURL = canvas.toDataURL("image/jpeg", 0.90);
-    preview.src = dataURL; preview.style.display = "block";
-    video.style.display = "none"; captureBtn.style.display = "none"; retakeBtn.style.display = "block";
-    status.textContent = "Photo captured! Click 'Run OCR' below to process it.";
-    send("streamlit:setComponentValue", dataURL); setHeight();
-  });
-
-  retakeBtn.addEventListener("click", () => {
-    preview.style.display = "none"; video.style.display = "block";
-    captureBtn.style.display = "block"; retakeBtn.style.display = "none";
-    status.textContent = "Back camera ready — aim and press Capture.";
-    send("streamlit:setComponentValue", null); setHeight();
-  });
-</script></body></html>"""
-
-# Write HTML to a temp dir once per process so declare_component can find it
-_COMP_DIR = pathlib.Path(tempfile.gettempdir()) / "calcmodule_back_camera"
-_COMP_DIR.mkdir(exist_ok=True)
-(_COMP_DIR / "index.html").write_text(_BACK_CAMERA_HTML, encoding="utf-8")
-
-_back_camera_comp = st_components.declare_component("back_camera", path=str(_COMP_DIR))
-
-def _back_camera_input(key="back_cam"):
-    """Render the custom back-camera widget; returns base64 JPEG string or None."""
-    return _back_camera_comp(key=key)
-
-def _b64_to_pil(data_url: str) -> Image.Image:
-    """Decode a base64 data-URL returned by the camera component."""
-    _, b64 = data_url.split(",", 1)
-    return Image.open(io.BytesIO(base64.b64decode(b64)))
 
 import streamlit as st
 
@@ -447,7 +358,6 @@ tab_ocr, tab_diff, tab_integ, tab_lim, tab_taylor, tab_eval = st.tabs([
 with tab_ocr:
     st.markdown('<div class="section-title">Extract Expression from Image</div>', unsafe_allow_html=True)
     st.markdown("Capture with your camera or upload a photo of a handwritten or printed mathematical expression.")
-    st.markdown("Note: For smartphone users, please refrain from using the camera function under the 'Upload Image' tab.")
     # ── Input mode selector ───────────────────────────────────────────────────
     ocr_sub_upload, ocr_sub_camera = st.tabs(["Upload Image", "Use Camera"])
 
@@ -468,12 +378,10 @@ with tab_ocr:
                 st.image(pil_img, caption="Uploaded image", use_container_width=True)
 
     with ocr_sub_camera:
-        st.markdown("Point your camera at the expression and press **Capture Photo**. "
-                    "On smartphones the back camera is used automatically.")
-        cam_data = _back_camera_input(key="ocr_back_cam")
-        camera_shot = cam_data  # keep name for src-detection below
-        if cam_data:
-            pil_img = _b64_to_pil(cam_data)
+        st.markdown("Point your camera at the expression and press **Take photo**.")
+        camera_shot = st.camera_input("Take a photo", key="ocr_camera", label_visibility="collapsed")
+        if camera_shot is not None:
+            pil_img = Image.open(camera_shot)
 
     # ── Shared OCR processing ─────────────────────────────────────────────────
     def _show_ocr_results(img: Image.Image, btn_key: str, edit_key: str, load_key: str):
@@ -498,8 +406,7 @@ with tab_ocr:
                         st.rerun()
 
     if pil_img is not None:
-        src = "cam" if (camera_shot is not None and pil_img is not None and
-                        "ocr_camera" in st.session_state and st.session_state.get("ocr_camera") is not None) else "up"
+        src = "cam" if st.session_state.get("ocr_camera") is not None else "up"
         _show_ocr_results(pil_img, f"run_ocr_{src}", f"ocr_edit_{src}", f"load_ocr_{src}")
 
 
