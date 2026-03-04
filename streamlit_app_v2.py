@@ -298,6 +298,37 @@ def clean_math_expression(text: str) -> str:
     text = re.sub(r'(\d)\(', r'\1*(', text)
     return text
 
+# ── Cached EasyOCR reader (loaded once per server process, ~300 MB) ───────────
+@st.cache_resource(show_spinner="Loading OCR model… (first time only)")
+def _get_ocr_reader():
+    import easyocr
+    return easyocr.Reader(['en'], gpu=False, verbose=False)
+
+_MAX_OCR_PX = 1920  # cap longest side to avoid OOM on high-res Apple photos
+
+def _apply_exif_orientation(img: Image.Image) -> Image.Image:
+    """Rotate image according to EXIF orientation tag (fixes iPhone portrait photos)."""
+    try:
+        exif = img._getexif()
+        if exif is None:
+            return img
+        orientation = exif.get(274)  # 274 = Orientation tag
+        rotations = {3: 180, 6: 270, 8: 90}
+        if orientation in rotations:
+            img = img.rotate(rotations[orientation], expand=True)
+    except Exception:
+        pass
+    return img
+
+def _resize_for_ocr(img: Image.Image) -> Image.Image:
+    """Downscale to at most _MAX_OCR_PX on the longest side (saves memory)."""
+    w, h = img.size
+    longest = max(w, h)
+    if longest > _MAX_OCR_PX:
+        scale = _MAX_OCR_PX / longest
+        img = img.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
+    return img
+
 def _preprocess_for_ocr(pil_image: Image.Image):
     """Return a contrast-enhanced grayscale image for better OCR accuracy."""
     try:
@@ -315,11 +346,12 @@ def _preprocess_for_ocr(pil_image: Image.Image):
         return pil_image  # fall back to original if cv2 unavailable
 
 def ocr_image(pil_image: Image.Image) -> tuple[str, str]:
-    """Run OCR using EasyOCR. Returns (text, engine_used)."""
+    """Run OCR using cached EasyOCR reader. Returns (text, engine_used)."""
+    pil_image = _apply_exif_orientation(pil_image)  # fix iPhone portrait rotation
+    pil_image = _resize_for_ocr(pil_image)           # cap resolution to avoid OOM
     processed = _preprocess_for_ocr(pil_image)
     try:
-        import easyocr
-        reader = easyocr.Reader(['en'], gpu=False, verbose=False)
+        reader = _get_ocr_reader()
         results = reader.readtext(np.array(processed.convert("RGB")), detail=0)
         return " ".join(results).strip(), "EasyOCR"
     except Exception as err:
