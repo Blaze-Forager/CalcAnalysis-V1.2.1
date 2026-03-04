@@ -385,29 +385,43 @@ with tab_ocr:
 
     # ── Shared OCR processing ─────────────────────────────────────────────────
     def _show_ocr_results(img: Image.Image, btn_key: str, edit_key: str, load_key: str):
+        result_key = f"ocr_result_{btn_key}"
+
         if st.button("Run OCR", key=btn_key):
             with st.spinner("Running OCR… (first run may take a moment to load models)"):
                 raw_text, engine = ocr_image(img)
                 is_error = raw_text.startswith("[")
                 cleaned = "" if is_error else clean_math_expression(raw_text)
+            # Persist results so they survive the next rerun
+            st.session_state[result_key] = {
+                "raw": raw_text, "cleaned": cleaned,
+                "engine": engine, "is_error": is_error,
+            }
 
-            if is_error:
-                st.error(f"❌ {raw_text}")
+        # Render results from session state (survives reruns)
+        res = st.session_state.get(result_key)
+        if res:
+            if res["is_error"]:
+                st.error(f"❌ {res['raw']}")
             else:
-                st.caption(f"OCR engine used: **{engine}**")
+                st.caption(f"OCR engine used: **{res['engine']}**")
                 st.markdown("**Raw OCR output:**")
-                st.markdown(f'<div class="ocr-box">{raw_text if raw_text else "(empty)"}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="ocr-box">{res["raw"] if res["raw"] else "(empty)"}</div>', unsafe_allow_html=True)
                 st.markdown("**Cleaned expression:**")
-                st.markdown(f'<div class="ocr-box">{cleaned if cleaned else "(empty — try a clearer image)"}</div>', unsafe_allow_html=True)
-                if cleaned:
-                    edited = st.text_input("Edit before loading", value=cleaned, key=edit_key)
+                st.markdown(f'<div class="ocr-box">{res["cleaned"] if res["cleaned"] else "(empty — try a clearer image)"}</div>', unsafe_allow_html=True)
+                if res["cleaned"]:
+                    edited = st.text_input("Edit before loading", value=res["cleaned"], key=edit_key)
                     if st.button("Load into Calculator", key=load_key):
                         st.session_state["expr_str"] = edited
+                        st.session_state[result_key] = None  # clear results after loading
                         st.rerun()
 
     if pil_img is not None:
         src = "cam" if st.session_state.get("ocr_camera") is not None else "up"
         _show_ocr_results(pil_img, f"run_ocr_{src}", f"ocr_edit_{src}", f"load_ocr_{src}")
+
+
+
 
 
 
