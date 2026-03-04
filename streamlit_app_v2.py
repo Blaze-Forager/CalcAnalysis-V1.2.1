@@ -39,9 +39,84 @@ def _install_packages():
 # Run once per interpreter session (not every Streamlit rerun)
 _install_packages()
 
-# ── Custom back-camera component ───────────────────────────────────────────────
-_COMP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "components", "back_camera")
-_back_camera_comp = st_components.declare_component("back_camera", path=_COMP_DIR)
+# ── Custom back-camera component (self-contained, no external file needed) ─────
+import tempfile, pathlib
+
+_BACK_CAMERA_HTML = """<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: sans-serif; background: transparent; padding: 8px; }
+  #video { width: 100%; border-radius: 10px; background: #0d1b2a; display: block; }
+  #capture-btn {
+    width: 100%; margin-top: 10px; padding: 10px 0;
+    background: #1b263b; color: white; border: none;
+    border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer;
+    transition: opacity 0.2s ease;
+  }
+  #capture-btn:hover { opacity: 0.85; }
+  #status { margin-top: 6px; font-size: 0.78rem; color: #a0aec0; text-align: center; }
+  #preview { display: none; width: 100%; border-radius: 10px; margin-top: 8px; }
+  #retake-btn {
+    display: none; width: 100%; margin-top: 8px; padding: 8px 0;
+    background: rgba(255,255,255,0.08); color: #e0e0e0;
+    border: 1px solid rgba(255,255,255,0.15); border-radius: 8px;
+    font-size: 0.9rem; cursor: pointer;
+  }
+  canvas { display: none; }
+</style></head><body>
+<video id="video" autoplay playsinline muted></video>
+<canvas id="canvas"></canvas>
+<img id="preview" alt="Captured photo">
+<button id="capture-btn">📸 Capture Photo</button>
+<button id="retake-btn">🔄 Retake</button>
+<div id="status">Starting back camera…</div>
+<script>
+  function send(type, value) { window.parent.postMessage({ type, value }, "*"); }
+  function setHeight() { send("streamlit:setFrameHeight", document.body.scrollHeight + 20); }
+  send("streamlit:componentReady", { apiVersion: 1 });
+  window.addEventListener("message", e => { if (e.data.type === "streamlit:render") setHeight(); });
+
+  const video = document.getElementById("video");
+  const canvas = document.getElementById("canvas");
+  const captureBtn = document.getElementById("capture-btn");
+  const retakeBtn = document.getElementById("retake-btn");
+  const preview = document.getElementById("preview");
+  const status = document.getElementById("status");
+
+  navigator.mediaDevices.getUserMedia({
+    video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } }
+  }).then(stream => {
+    video.srcObject = stream;
+    video.onloadedmetadata = () => { status.textContent = "Back camera ready — aim and press Capture."; setHeight(); };
+  }).catch(err => { status.textContent = "⚠️ Camera error: " + err.message; setHeight(); });
+
+  captureBtn.addEventListener("click", () => {
+    canvas.width = video.videoWidth || 640; canvas.height = video.videoHeight || 480;
+    canvas.getContext("2d").drawImage(video, 0, 0);
+    const dataURL = canvas.toDataURL("image/jpeg", 0.90);
+    preview.src = dataURL; preview.style.display = "block";
+    video.style.display = "none"; captureBtn.style.display = "none"; retakeBtn.style.display = "block";
+    status.textContent = "Photo captured! Click 'Run OCR' below to process it.";
+    send("streamlit:setComponentValue", dataURL); setHeight();
+  });
+
+  retakeBtn.addEventListener("click", () => {
+    preview.style.display = "none"; video.style.display = "block";
+    captureBtn.style.display = "block"; retakeBtn.style.display = "none";
+    status.textContent = "Back camera ready — aim and press Capture.";
+    send("streamlit:setComponentValue", null); setHeight();
+  });
+</script></body></html>"""
+
+# Write HTML to a temp dir once per process so declare_component can find it
+_COMP_DIR = pathlib.Path(tempfile.gettempdir()) / "calcmodule_back_camera"
+_COMP_DIR.mkdir(exist_ok=True)
+(_COMP_DIR / "index.html").write_text(_BACK_CAMERA_HTML, encoding="utf-8")
+
+_back_camera_comp = st_components.declare_component("back_camera", path=str(_COMP_DIR))
 
 def _back_camera_input(key="back_cam"):
     """Render the custom back-camera widget; returns base64 JPEG string or None."""
@@ -532,7 +607,7 @@ with tab_eval:
 st.markdown("---")
 st.markdown(
     "<p style='text-align:center; color:#4a5568; font-size:0.8rem;'>"
-    "CalcModule v2 · Powered by SymPy, Streamlit, OpenCV, EasyOCR, &amp; Three hard working psyducks."
+    "CalcModule v2 · Powered by SymPy, Streamlit, OpenCV, Pytesseract, &amp; Three hard working psyducks."
     "</p>",
     unsafe_allow_html=True
 )
