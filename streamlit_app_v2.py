@@ -334,12 +334,12 @@ st.sidebar.markdown("**Format Guide**")
 st.sidebar.code("sin, cos, tan, exp, log, sqrt\npi, E\n** for power\n* for multiply", language="")
 # ── Tabs ──────────────────────────────────────────────────────────────────────
 tab_ocr, tab_diff, tab_integ, tab_lim, tab_taylor, tab_eval = st.tabs([
-    "📷 Image OCR",
-    "∂ Differentiation",
-    "∫ Integration",
-    "lim Limit",
-    "~ Taylor Series",
-    "= Evaluation",
+    "Image OCR",
+    "Differentiation",
+    "Integration",
+    "Limit",
+    "Taylor Series",
+    "Evaluation",
 ])
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -350,7 +350,7 @@ with tab_ocr:
     st.markdown("Capture with your camera or upload a photo of a handwritten or printed mathematical expression.")
 
     # ── Input mode selector ───────────────────────────────────────────────────
-    ocr_sub_upload, ocr_sub_camera = st.tabs(["📁 Upload Image", "📸 Use Camera"])
+    ocr_sub_upload, ocr_sub_camera = st.tabs(["Upload Image", "Use Camera"])
 
     pil_img = None  # will be set by whichever input is active
 
@@ -548,3 +548,4 @@ st.markdown(
     "</p>",
     unsafe_allow_html=True
 )
+
