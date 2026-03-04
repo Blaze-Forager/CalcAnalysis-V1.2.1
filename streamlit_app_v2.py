@@ -4,11 +4,12 @@ Advanced Calculator with Image OCR + Symbolic Calculus
 """
 
 # ── Auto-install dependencies ─────────────────────────────────────────────────
-import subprocess, sys, os
+import subprocess, sys, os, base64, io
 import sympy as sp
 import numpy as np
 from PIL import Image
 import re
+import streamlit.components.v1 as st_components
 try:
     import cv2
 except ImportError:
@@ -37,6 +38,19 @@ def _install_packages():
 
 # Run once per interpreter session (not every Streamlit rerun)
 _install_packages()
+
+# ── Custom back-camera component ───────────────────────────────────────────────
+_COMP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "components", "back_camera")
+_back_camera_comp = st_components.declare_component("back_camera", path=_COMP_DIR)
+
+def _back_camera_input(key="back_cam"):
+    """Render the custom back-camera widget; returns base64 JPEG string or None."""
+    return _back_camera_comp(key=key)
+
+def _b64_to_pil(data_url: str) -> Image.Image:
+    """Decode a base64 data-URL returned by the camera component."""
+    _, b64 = data_url.split(",", 1)
+    return Image.open(io.BytesIO(base64.b64decode(b64)))
 
 import streamlit as st
 
@@ -326,7 +340,7 @@ tab_ocr, tab_diff, tab_integ, tab_lim, tab_taylor, tab_eval = st.tabs([
 with tab_ocr:
     st.markdown('<div class="section-title">Extract Expression from Image</div>', unsafe_allow_html=True)
     st.markdown("Capture with your camera or upload a photo of a handwritten or printed mathematical expression.")
-
+    st.markdown("Note: For smartphone users, please refrain from using the camera function under the 'Upload Image' tab.")
     # ── Input mode selector ───────────────────────────────────────────────────
     ocr_sub_upload, ocr_sub_camera = st.tabs(["Upload Image", "Use Camera"])
 
@@ -347,10 +361,12 @@ with tab_ocr:
                 st.image(pil_img, caption="Uploaded image", use_container_width=True)
 
     with ocr_sub_camera:
-        st.markdown("Point your camera at the expression and press **Take photo**.")
-        camera_shot = st.camera_input("Take a photo", key="ocr_camera", label_visibility="collapsed")
-        if camera_shot is not None:
-            pil_img = Image.open(camera_shot)
+        st.markdown("Point your camera at the expression and press **Capture Photo**. "
+                    "On smartphones the back camera is used automatically.")
+        cam_data = _back_camera_input(key="ocr_back_cam")
+        camera_shot = cam_data  # keep name for src-detection below
+        if cam_data:
+            pil_img = _b64_to_pil(cam_data)
 
     # ── Shared OCR processing ─────────────────────────────────────────────────
     def _show_ocr_results(img: Image.Image, btn_key: str, edit_key: str, load_key: str):
@@ -516,7 +532,7 @@ with tab_eval:
 st.markdown("---")
 st.markdown(
     "<p style='text-align:center; color:#4a5568; font-size:0.8rem;'>"
-    "CalcModule v2 · Powered by SymPy, Streamlit, OpenCV, Pytesseract, &amp; Three hard working psyducks."
+    "CalcModule v2 · Powered by SymPy, Streamlit, OpenCV, EasyOCR, &amp; Three hard working psyducks."
     "</p>",
     unsafe_allow_html=True
 )
