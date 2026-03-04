@@ -20,8 +20,7 @@ _REQUIRED = [
     "numpy",
     "Pillow",
     "opencv-python-headless",  # headless = no libGL/OpenGL dependency
-    "pytesseract",
-    "easyocr",  # pure-Python OCR fallback — no Tesseract binary needed
+    "easyocr",
 ]
 
 def _install_packages():
@@ -160,7 +159,7 @@ section[data-testid="stSidebar"] {
 st.markdown("""
 <div class="hero">
     <h1>∫ CalcModule v2</h1>
-    <p>Advanced Symbolic Calculator · Image OCR · Engineered by a team of 3 hardworking psyducks</p>
+    <p>Advanced Symbolic Calculator · Image OCR · Engineered by a team of 3 hardworking psyducks 🐥</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -227,36 +226,15 @@ def _preprocess_for_ocr(pil_image: Image.Image):
         return pil_image  # fall back to original if cv2 unavailable
 
 def ocr_image(pil_image: Image.Image) -> tuple[str, str]:
-    """Try pytesseract first; fall back to easyocr. Returns (text, engine_used)."""
-
+    """Run OCR using EasyOCR. Returns (text, engine_used)."""
     processed = _preprocess_for_ocr(pil_image)
-
-    # ── Stage 1: Tesseract ────────────────────────────────────────────────
-    try:
-        import pytesseract
-        # Auto-detect common Windows install path
-        if sys.platform.startswith("win"):
-            tess_path = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-            if os.path.exists(tess_path):
-                pytesseract.pytesseract.tesseract_cmd = tess_path
-        raw = pytesseract.image_to_string(processed, config='--oem 3 --psm 6')
-        return raw.strip(), "Tesseract"
-    except Exception as tess_err:
-        tess_msg = str(tess_err)
-        # If Tesseract binary missing, try easyocr
-        if "tesseract is not installed" in tess_msg.lower() or "not in your path" in tess_msg.lower():
-            pass  # fall through to easyocr
-        else:
-            return f"[Tesseract error: {tess_msg}]", "error"
-
-    # ── Stage 2: EasyOCR (no binary required) ────────────────────────────
     try:
         import easyocr
         reader = easyocr.Reader(['en'], gpu=False, verbose=False)
-        results = reader.readtext(np.array(pil_image.convert("RGB")), detail=0)
+        results = reader.readtext(np.array(processed.convert("RGB")), detail=0)
         return " ".join(results).strip(), "EasyOCR"
-    except Exception as easy_err:
-        return f"[OCR failed: {easy_err}]", "error"
+    except Exception as err:
+        return f"[OCR failed: {err}]", "error"
 
 # ── Session State ─────────────────────────────────────────────────────────────
 if "expr_str" not in st.session_state:
@@ -319,7 +297,7 @@ try:
     st.session_state["var_str"] = var_input
 
     with st.sidebar:
-        st.success("Expression converted successfully")
+        st.success("✅ Parsed successfully")
         st.latex(sp.latex(sym_expr))
 
 except sp.SympifyError:
@@ -334,12 +312,12 @@ st.sidebar.markdown("**Format Guide**")
 st.sidebar.code("sin, cos, tan, exp, log, sqrt\npi, E\n** for power\n* for multiply", language="")
 # ── Tabs ──────────────────────────────────────────────────────────────────────
 tab_ocr, tab_diff, tab_integ, tab_lim, tab_taylor, tab_eval = st.tabs([
-    "Image OCR",
-    "Differentiation",
-    "Integration",
-    "Limit",
-    "Taylor Series",
-    "Evaluation",
+    "📷 Image OCR",
+    "∂ Differentiation",
+    "∫ Integration",
+    "lim Limit",
+    "~ Taylor Series",
+    "= Evaluation",
 ])
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -350,7 +328,7 @@ with tab_ocr:
     st.markdown("Capture with your camera or upload a photo of a handwritten or printed mathematical expression.")
 
     # ── Input mode selector ───────────────────────────────────────────────────
-    ocr_sub_upload, ocr_sub_camera = st.tabs(["Upload Image", "Use Camera"])
+    ocr_sub_upload, ocr_sub_camera = st.tabs(["📁 Upload Image", "📸 Use Camera"])
 
     pil_img = None  # will be set by whichever input is active
 
@@ -385,14 +363,14 @@ with tab_ocr:
             if is_error:
                 st.error(f"❌ {raw_text}")
             else:
-                st.caption(f" OCR engine used: **{engine}**")
+                st.caption(f"✅ OCR engine used: **{engine}**")
                 st.markdown("**Raw OCR output:**")
                 st.markdown(f'<div class="ocr-box">{raw_text if raw_text else "(empty)"}</div>', unsafe_allow_html=True)
                 st.markdown("**Cleaned expression:**")
                 st.markdown(f'<div class="ocr-box">{cleaned if cleaned else "(empty — try a clearer image)"}</div>', unsafe_allow_html=True)
                 if cleaned:
-                    edited = st.text_input("Edit before loading", value=cleaned, key=edit_key)
-                    if st.button("Load into Calculator", key=load_key):
+                    edited = st.text_input("✏️ Edit before loading", value=cleaned, key=edit_key)
+                    if st.button("⬅️ Load into Calculator", key=load_key):
                         st.session_state["expr_str"] = edited
                         st.success(f"Expression loaded: `{edited}` — switch to another tab to compute.")
 
@@ -401,13 +379,7 @@ with tab_ocr:
                         "ocr_camera" in st.session_state and st.session_state.get("ocr_camera") is not None) else "up"
         _show_ocr_results(pil_img, f"run_ocr_{src}", f"ocr_edit_{src}", f"load_ocr_{src}")
 
-    st.markdown("---")
-    st.markdown("""
-**Tesseract setup (Windows):**  
-1. Download from [UB-Mannheim](https://github.com/UB-Mannheim/tesseract/wiki)  
-2. Install to `C:\\Program Files\\Tesseract-OCR\\`  
-3. Restart the Streamlit app
-""")
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TAB 1 · DIFFERENTIATION
@@ -544,9 +516,7 @@ with tab_eval:
 st.markdown("---")
 st.markdown(
     "<p style='text-align:center; color:#4a5568; font-size:0.8rem;'>"
-    "CalcModule v2 · Powered by SymPy, Streamlit, OpenCV, Pytesseract, &amp; Three hard working psyducks."
+    "CalcModule v2 · Powered by SymPy, Streamlit, OpenCV, EasyOCR, &amp; Three hard working psyducks."
     "</p>",
     unsafe_allow_html=True
 )
-
-
