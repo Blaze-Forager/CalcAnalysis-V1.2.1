@@ -158,7 +158,7 @@ section[data-testid="stSidebar"] {
 # ── Hero Header ───────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="hero">
-    <h1>∫ CalcModule v2</h1>
+    <h1>∫ Photo- Calculus v2</h1>
     <p>Advanced Symbolic Calculator · Image OCR · Engineered by a team of 3 hardworking psyducks</p>
 </div>
 """, unsafe_allow_html=True)
@@ -566,4 +566,5 @@ st.markdown(
     "</p>",
     unsafe_allow_html=True
 )
+
 
