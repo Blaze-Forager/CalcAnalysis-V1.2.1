@@ -278,7 +278,7 @@ calc = CalculusCalculator()
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.image("Psyduck.jpg", width=60)
+    st.image("logo.png", width=60)
     st.markdown("### Expression Settings")
 
     expr_input = st.text_input(
@@ -566,5 +566,6 @@ st.markdown(
     "</p>",
     unsafe_allow_html=True
 )
+
 
 
